@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Theo Dõi Đường Huyết & Thông Tin Bệnh Tiểu Đường (Hỗ Trợ Web Bluetooth)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js & Annotation Plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+              800: '#115e59',
+              900: '#134e4a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(13, 148, 136, 0.4);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(13, 148, 136, 0.7);
+    }
+    html {
+      scroll-behavior: smooth;
+    }
+    [role="tabpanel"][hidden] {
+      display: none !important;
+    }
+    .app-tab[aria-selected="true"] {
+      background-color: #ccfbf1 !important;
+      color: #0f766e !important;
+    }
+    .dark .app-tab[aria-selected="true"] {
+      background-color: rgba(51, 65, 85, 0.8) !important;
+      color: #5eead4 !important;
+    }
+    .pulse-blue {
+      animation: pulse-animation 2s infinite;
+    }
+    @keyframes pulse-animation {
+      0% { box-shadow: 0 0 0 0px rgba(59, 130, 246, 0.5); }
+      70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+      100% { box-shadow: 0 0 0 0px rgba(59, 130, 246, 0); }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col transition-colors duration-200">
+
+  <!-- Header -->
+  <header class="bg-brand-700 dark:bg-brand-900 text-white shadow-lg">
+    <div class="max-w-6xl mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div class="text-center md:text-left">
+        <h1 class="text-2xl md:text-3xl font-bold flex items-center justify-center md:justify-start gap-2">
+          <i class="fa-solid fa-heart-pulse text-red-400"></i>
+          Theo Dõi Đường Huyết
+        </h1>
+        <p class="text-brand-100 text-sm md:text-base mt-1">Quản lý đường huyết cá nhân - Tích hợp đồng bộ Máy đo Bluetooth BLE</p>
+      </div>
+
+      <!-- Header Action Controls -->
+      <div class="flex items-center gap-3">
+        <button id="themeToggleBtn" aria-label="Đổi chế độ sáng tối" class="p-2.5 rounded-xl bg-brand-800/80 hover:bg-brand-800 text-brand-100 hover:text-white transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+          <i id="themeIcon" class="fa-solid fa-moon text-lg"></i>
+        </button>
+        <a href="#nhat-ky" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold rounded-xl transition shadow-md flex items-center gap-2 text-sm">
+          <i class="fa-solid fa-plus-circle"></i>
+          Ghi nhận mới
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Bar -->
+  <nav class="sticky top-0 z-30 bg-white/90 dark:bg-slate-800/90 backdrop-blur border-b border-slate-200 dark:border-slate-700 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4">
+      <div role="tablist" aria-label="Các trang chức năng" class="flex flex-wrap items-center justify-start md:justify-center gap-1 md:gap-2 py-2.5 text-xs md:text-sm font-medium whitespace-nowrap">
+        <a id="tab-nhat-ky" role="tab" aria-controls="nhat-ky" aria-selected="true" tabindex="0" href="#nhat-ky" class="app-tab px-3 py-1.5 rounded-lg text-brand-700 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-slate-700/50 transition">
+          <i class="fa-solid fa-chart-line mr-1"></i> Nhật ký & Thống kê
+        </a>
+        <a id="tab-nhac-nho" role="tab" aria-controls="nhac-nho" aria-selected="false" tabindex="-1" href="#nhac-nho" class="app-tab px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition">
+          <i class="fa-solid fa-bell mr-1"></i> Nhắc nhở & HbA1c
+        </a>
+        <a id="tab-thong-tin" role="tab" aria-controls="thong-tin" aria-selected="false" tabindex="-1" href="#thong-tin" class="app-tab px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition">
+          <i class="fa-solid fa-book-medical mr-1"></i> Thông tin chính
+        </a>
+        <a id="tab-yeu-to" role="tab" aria-controls="yeu-to" aria-selected="false" tabindex="-1" href="#yeu-to" class="app-tab px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition">
+          <i class="fa-solid fa-list-check mr-1"></i> Nguy cơ mắc bệnh
+        </a>
+        <a id="tab-bien-chung" role="tab" aria-controls="bien-chung" aria-selected="false" tabindex="-1" href="#bien-chung" class="app-tab px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition">
+          <i class="fa-solid fa-triangle-exclamation mr-1"></i> Biến chứng
+        </a>
+        <a id="tab-nguyen-ly" role="tab" aria-controls="nguyen-ly" aria-selected="false" tabindex="-1" href="#nguyen-ly" class="app-tab px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition">
+          <i class="fa-solid fa-microscope mr-1"></i> Thiết bị đo
+        </a>
+        <a id="tab-huong-dan" role="tab" aria-controls="huong-dan" aria-selected="false" tabindex="-1" href="#huong-dan" class="app-tab px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition">
+          <i class="fa-solid fa-circle-question mr-1"></i> Hướng dẫn sử dụng
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="max-w-6xl mx-auto px-4 py-8 flex-grow space-y-10 w-full">
+
+    <!-- BANNER VIỆC CẦN LÀM (nhắc nhở đến giờ / HbA1c đến hạn) -->
+    <!-- SECTION 1: NHẬT KÝ ĐƯỜNG HUYẾT VÀ TÍNH NĂNG BLUETOOTH BLE -->
+    <section id="nhat-ky" role="tabpanel" aria-labelledby="tab-nhat-ky" tabindex="0" class="scroll-mt-20">
+      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 p-4 md:p-6 space-y-6">
+        
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-700 pb-4">
+          <div>
+            <h2 class="text-xl md:text-2xl font-bold text-brand-700 dark:text-brand-400 flex items-center gap-2">
+              <i class="fa-solid fa-notes-medical"></i> Nhật Ký Đường Huyết
+            </h2>
+            <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">Đồng bộ tự động qua Bluetooth BLE hoặc nhập thủ công</p>
+          </div>
+          
+          <!-- Data Export / Import Action Group -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <button id="exportCsvBtn" title="Xuất dữ liệu ra file CSV" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-1.5">
+              <i class="fa-solid fa-file-csv text-emerald-600 dark:text-emerald-400"></i> Xuất CSV
+            </button>
+            <button id="exportJsonBtn" title="Xuất dữ liệu sao lưu JSON" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-1.5">
+              <i class="fa-solid fa-file-export text-blue-600 dark:text-blue-400"></i> Xuất JSON
+            </button>
+            <label id="importJsonLabel" title="Nạp dữ liệu từ file JSON" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer flex items-center gap-1.5">
+              <i class="fa-solid fa-file-import text-amber-600 dark:text-amber-400"></i> Nhập Dữ Liệu
+              <input type="file" id="importJsonInput" accept=".json" class="hidden">
+            </label>
+          </div>
+        </div>
+
+        <!-- BLUETOOTH CONTROL BAR -->
+        <div class="bg-sky-50/70 dark:bg-slate-900/80 border border-sky-200 dark:border-slate-700 rounded-xl p-4 space-y-3">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="p-2.5 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                <i class="fa-bluetooth-b fa-brands text-2xl"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  Kết Nối Máy Đo Đường Huyết Bluetooth (BLE Glucose Service)
+                </h3>
+                <p id="btStatusText" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Trạng thái: Sẵn sàng kết nối</p>
+              </div>
+            </div>
+
+            <!-- Bluetooth Buttons -->
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+              <button id="connectBtBtn" class="flex-1 sm:flex-none px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition shadow flex items-center justify-center gap-2">
+                <i class="fa-bluetooth-b fa-brands"></i>
+                <span>Kết nối máy đo</span>
+              </button>
+              <button id="disconnectBtBtn" class="hidden px-3 py-2 bg-rose-100 hover:bg-rose-200 text-rose-700 dark:bg-rose-950/60 dark:hover:bg-rose-900 dark:text-rose-300 text-xs font-semibold rounded-lg transition flex items-center gap-1.5">
+                <i class="fa-solid fa-power-off"></i> Ngắt kết nối
+              </button>
+            </div>
+          </div>
+
+          <!-- Status Indicator Pill -->
+          <div class="flex items-center justify-between pt-2 border-t border-sky-100 dark:border-slate-800 text-xs">
+            <span id="btDeviceBadge" class="inline-flex items-center px-2.5 py-1 rounded-full font-medium bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+              <span class="w-2 h-2 rounded-full bg-slate-400 mr-2"></span> Chưa có kết nối
+            </span>
+            <span class="text-slate-400 text-[11px] hidden md:inline">
+              <i class="fa-solid fa-circle-info mr-1"></i> Chuẩn GATT 0x1808 (Glucose) / 0x2A18 (Measurement)
+            </span>
+          </div>
+        </div>
+
+        <!-- FORM NHẬP LIỆU THỦ CÔNG -->
+        <div class="space-y-2">
+          <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Hoặc nhập thủ công chỉ số</p>
+          <form id="recordForm" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+            <div>
+              <label for="recordValue" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Chỉ số đường huyết (mg/dL) *
+              </label>
+              <input type="number" id="recordValue" min="1" max="1000" step="any" placeholder="Ví dụ: 105" required
+                class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            </div>
+
+            <div>
+              <label for="recordType" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Thời điểm đo *
+              </label>
+              <select id="recordType" required
+                class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                <option value="Lúc đói">Lúc đói (Sáng sớm)</option>
+                <option value="Sau ăn">Sau ăn (2 giờ)</option>
+                <option value="Trước ngủ">Trước khi đi ngủ</option>
+                <option value="Khác">Thời điểm khác</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="recordDateTime" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Ngày & Giờ đo *
+              </label>
+              <input type="datetime-local" id="recordDateTime" required
+                class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button type="submit" class="flex-1 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg text-sm transition shadow flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-floppy-disk"></i> Lưu Nhật Ký
+              </button>
+              <button type="button" id="resetFormBtn" class="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-sm transition" title="Đặt lại form">
+                <i class="fa-solid fa-rotate-right"></i>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Status Message Banner -->
+        <div id="statusAlert" class="hidden p-3.5 rounded-xl text-sm font-semibold flex items-center justify-between transition-all" role="alert" aria-live="polite">
+          <span id="statusAlertText"></span>
+          <button type="button" onclick="document.getElementById('statusAlert').classList.add('hidden')" class="opacity-70 hover:opacity-100">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- THỐNG KÊ NHANH CARD DASHBOARD -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="p-3.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/50">
+            <p class="text-xs text-teal-600 dark:text-teal-400 font-semibold">Trung bình</p>
+            <p id="statAvg" class="text-xl md:text-2xl font-bold text-teal-800 dark:text-teal-200 mt-1">-- <span class="text-xs font-normal">mg/dL</span></p>
+          </div>
+          <div class="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50">
+            <p class="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">Thấp nhất</p>
+            <p id="statMin" class="text-xl md:text-2xl font-bold text-emerald-800 dark:text-emerald-200 mt-1">-- <span class="text-xs font-normal">mg/dL</span></p>
+          </div>
+          <div class="p-3.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/50">
+            <p class="text-xs text-purple-600 dark:text-purple-400 font-semibold">Cao nhất</p>
+            <p id="statMax" class="text-xl md:text-2xl font-bold text-purple-800 dark:text-purple-200 mt-1">-- <span class="text-xs font-normal">mg/dL</span></p>
+          </div>
+          <div class="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/50">
+            <p class="text-xs text-rose-600 dark:text-rose-400 font-semibold">Lần cảnh báo</p>
+            <p id="statWarnings" class="text-xl md:text-2xl font-bold text-rose-800 dark:text-rose-200 mt-1">0 <span class="text-xs font-normal">lần</span></p>
+          </div>
+        </div>
+
+        <!-- BỘ LỌC VÀ BIỂU ĐỒ DIỄN BIẾN -->
+        <div class="space-y-4 pt-2">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 class="font-bold text-slate-700 dark:text-slate-200 text-base flex items-center gap-2">
+              <i class="fa-solid fa-chart-area text-brand-600"></i> Biểu Đồ Chỉ Số Đường Huyết
+            </h3>
+            
+            <!-- Time Filter Range -->
+            <div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700/50 p-1 rounded-xl text-xs font-medium">
+              <button data-filter="today" class="filter-btn px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-300 hover:text-brand-600 transition">Hôm nay</button>
+              <button data-filter="7days" class="filter-btn px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-300 hover:text-brand-600 transition">7 Ngày</button>
+              <button data-filter="30days" class="filter-btn px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-300 hover:text-brand-600 transition">30 Ngày</button>
+              <button data-filter="all" class="filter-btn px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-brand-700 dark:text-brand-400 font-bold shadow-sm transition">Tất cả</button>
+            </div>
+          </div>
+
+          <!-- Chart Area -->
+          <div class="relative w-full h-[320px] md:h-[380px] bg-slate-50/50 dark:bg-slate-900/30 p-2 md:p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+            <canvas id="bloodSugarChart" aria-label="Biểu đồ trực quan đường huyết"></canvas>
+          </div>
+          <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
+            <span class="flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded-sm bg-emerald-500/20 border border-emerald-500 inline-block"></span>
+              Khoảng mục tiêu (70 - 180 mg/dL)
+            </span>
+            <span class="italic">* Dữ liệu được lưu trữ bảo mật cục bộ trên thiết bị của bạn.</span>
+          </div>
+        </div>
+
+        <!-- BẢNG LỊCH SỬ ĐO CHI TIẾT -->
+        <div class="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-slate-700 dark:text-slate-200 text-base flex items-center gap-2">
+              <i class="fa-solid fa-list-ul text-brand-600"></i> Bảng Lịch Sử Đo Chi Tiết
+            </h3>
+            <button id="clearAllBtn" class="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1">
+              <i class="fa-solid fa-trash-can"></i> Xóa tất cả dữ liệu
+            </button>
+          </div>
+
+          <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+            <table class="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr class="bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200 font-semibold text-xs uppercase tracking-wider">
+                  <th class="py-3 px-4">Thời gian</th>
+                  <th class="py-3 px-4">Thời điểm</th>
+                  <th class="py-3 px-4">Chỉ số (mg/dL)</th>
+                  <th class="py-3 px-4">Nguồn dữ liệu</th>
+                  <th class="py-3 px-4">Trạng thái</th>
+                  <th class="py-3 px-4 text-center">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody" class="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-800">
+                <!-- Data rows injected by JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+      <div class="mt-6 bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 p-4 md:p-6">
+        <h2 class="text-lg font-bold text-brand-700 dark:text-brand-400 mb-3">Truy cập nhanh</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-sm">
+          <a href="#nhac-nho" class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-brand-50 dark:hover:bg-slate-700">Nhắc nhở & HbA1c</a>
+          <a href="#thong-tin" class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-brand-50 dark:hover:bg-slate-700">Thông tin chính</a>
+          <a href="#yeu-to" class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-brand-50 dark:hover:bg-slate-700">Nguy cơ mắc bệnh</a>
+          <a href="#bien-chung" class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-brand-50 dark:hover:bg-slate-700">Biến chứng</a>
+          <a href="#nguyen-ly" class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-brand-50 dark:hover:bg-slate-700">Thiết bị đo</a>
+          <a href="#huong-dan" class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-brand-50 dark:hover:bg-slate-700">Hướng dẫn sử dụng</a>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- SECTION: NHẮC NHỞ & THEO DÕI HbA1c -->
+    <section id="nhac-nho" role="tabpanel" aria-labelledby="tab-nhac-nho" tabindex="0" hidden class="scroll-mt-20">
+      <div id="dueBanner" class="hidden mb-4 p-4 rounded-2xl border border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-950/70 dark:text-amber-200 dark:border-amber-700 space-y-2" role="status" aria-live="polite">
+        <p class="font-bold flex items-center gap-2"><i class="fa-solid fa-bell"></i> Việc cần làm bây giờ</p>
+        <ul id="dueList" class="list-disc pl-6 text-sm space-y-1"></ul>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 p-4 md:p-6 space-y-6">
+        <div class="border-b border-slate-200 dark:border-slate-700 pb-4">
+          <h2 class="text-xl md:text-2xl font-bold text-brand-700 dark:text-brand-400 flex items-center gap-2">
+            <i class="fa-solid fa-bell"></i> Nhắc Nhở & Theo Dõi HbA1c
+          </h2>
+          <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">Nhắc đo đường huyết, uống thuốc và lịch xét nghiệm HbA1c định kỳ</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+          <!-- Nhắc nhở hằng ngày -->
+          <div class="space-y-3">
+            <h3 class="font-bold text-slate-700 dark:text-slate-200 text-base flex items-center gap-2">
+              <i class="fa-solid fa-clock text-brand-600"></i> Nhắc nhở hằng ngày
+            </h3>
+            <form id="reminderForm" class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+              <div>
+                <label for="reminderKind" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Loại nhắc nhở</label>
+                <select id="reminderKind" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                  <option>Đo đường huyết</option>
+                  <option>Uống thuốc</option>
+                  <option>Khác</option>
+                </select>
+              </div>
+              <div>
+                <label for="reminderTime" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Giờ nhắc *</label>
+                <input type="time" id="reminderTime" required class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+              </div>
+              <div class="sm:col-span-2">
+                <label for="reminderNote" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Ghi chú (tuỳ chọn)</label>
+                <input type="text" id="reminderNote" maxlength="60" placeholder="Ví dụ: trước bữa sáng" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+              </div>
+              <button type="submit" class="sm:col-span-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg text-sm transition shadow flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-plus"></i> Thêm nhắc nhở
+              </button>
+            </form>
+            <button type="button" id="notifyBtn" class="hidden text-xs font-semibold text-brand-700 dark:text-brand-400 hover:underline items-center gap-1.5">
+              <i class="fa-solid fa-bell"></i> Bật thông báo của trình duyệt
+            </button>
+            <div class="flex flex-wrap items-center gap-3">
+              <button type="button" id="exportCalendarBtn" class="px-3 py-2 text-xs font-semibold rounded-lg bg-brand-600 hover:bg-brand-700 text-white transition inline-flex items-center gap-2">
+                <i class="fa-regular fa-calendar-plus"></i> Tải lịch nhắc nhở (.ics)
+              </button>
+              <span id="calendarStatus" class="text-xs text-slate-500 dark:text-slate-400" role="status" aria-live="polite"></span>
+            </div>
+            <ul id="reminderList" class="space-y-2"></ul>
+          </div>
+
+          <!-- Theo dõi HbA1c -->
+          <div class="space-y-3">
+            <h3 class="font-bold text-slate-700 dark:text-slate-200 text-base flex items-center gap-2">
+              <i class="fa-solid fa-vial text-brand-600"></i> Theo dõi HbA1c
+            </h3>
+            <form id="a1cForm" class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+              <div>
+                <label for="a1cValue" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Kết quả HbA1c (%) *</label>
+                <input type="number" id="a1cValue" min="3" max="20" step="0.1" placeholder="Ví dụ: 6.8" required class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+              </div>
+              <div>
+                <label for="a1cDate" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Ngày xét nghiệm *</label>
+                <input type="date" id="a1cDate" required class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+              </div>
+              <button type="submit" class="sm:col-span-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg text-sm transition shadow flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-floppy-disk"></i> Lưu kết quả HbA1c
+              </button>
+            </form>
+            <div id="a1cSummary" class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-4 text-sm space-y-1.5"></div>
+            <ul id="a1cList" class="space-y-2 max-h-56 overflow-y-auto"></ul>
+          </div>
+        </div>
+
+        <p class="text-xs text-slate-500 dark:text-slate-400 italic">
+          * Nhắc nhở chỉ hiện khi trang web đang mở (muốn nhắc khi đã đóng trang cần thêm máy chủ và thông báo đẩy). Mục tiêu HbA1c và thời điểm xét nghiệm của mỗi người do bác sĩ quyết định; mức dưới 7% và chu kỳ khoảng 3 tháng chỉ là giá trị tham khảo thường dùng.
+        </p>
+      </div>
+    </section>
+
+
+    <!-- SECTION 2: THÔNG TIN CHÍNH VỀ BỆNH TIỂU ĐƯỜNG -->
+    <section id="thong-tin" role="tabpanel" aria-labelledby="tab-thong-tin" tabindex="0" hidden class="scroll-mt-20">
+      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 p-4 md:p-6 space-y-4">
+        <h2 class="text-xl md:text-2xl font-bold text-brand-700 dark:text-brand-400 border-b border-slate-200 dark:border-slate-700 pb-3 flex items-center gap-2">
+          <i class="fa-solid fa-circle-info"></i> Bệnh Tiểu Đường: Thông Tin Chính
+        </h2>
+
+        <div class="space-y-3">
+          <details class="group bg-slate-50 dark:bg-slate-900/50 border-l-4 border-brand-600 rounded-r-xl p-4 transition-all" open>
+            <summary class="font-bold cursor-pointer text-slate-800 dark:text-slate-100 flex justify-between items-center">
+              <span>1. Định nghĩa</span>
+              <i class="fa-solid fa-chevron-down text-xs transition-transform group-open:rotate-180"></i>
+            </summary>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Một bệnh mạn tính xảy ra khi cơ thể không sản xuất đủ insulin hoặc không sử dụng insulin hiệu quả, dẫn đến tăng đường huyết (đường huyết cao), gây tổn thương thần kinh và mạch máu theo thời gian.
+            </p>
+          </details>
+
+          <div class="space-y-3">
+            <h3 class="text-lg font-bold text-brand-700 dark:text-brand-400">2. Phân loại bệnh chính</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <article class="bg-slate-50 dark:bg-slate-900/50 border-l-4 border-brand-600 rounded-r-xl p-4">
+                <h4 class="font-bold text-slate-800 dark:text-slate-100">Tiểu đường Tuýp 1</h4>
+                <p class="mt-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">Hệ miễn dịch tấn công các tế bào beta của tuyến tụy, khiến cơ thể không còn sản xuất đủ insulin. Người bệnh cần insulin từ bên ngoài để điều trị. Hiện chưa có biện pháp đã được chứng minh để phòng ngừa Tuýp 1.</p>
+              </article>
+              <article class="bg-slate-50 dark:bg-slate-900/50 border-l-4 border-brand-600 rounded-r-xl p-4">
+                <h4 class="font-bold text-slate-800 dark:text-slate-100">Tiểu đường Tuýp 2</h4>
+                <p class="mt-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">Cơ thể đề kháng với insulin; theo thời gian, tuyến tụy có thể suy giảm khả năng tiết insulin. Tuýp 2 chiếm hơn 95% số trường hợp tiểu đường. Bệnh liên quan đến nhiều yếu tố, trong đó có lối sống; thay đổi lối sống lành mạnh có thể giúp giảm nguy cơ mắc bệnh.</p>
+              </article>
+              <article class="bg-slate-50 dark:bg-slate-900/50 border-l-4 border-brand-600 rounded-r-xl p-4">
+                <h4 class="font-bold text-slate-800 dark:text-slate-100">Tiểu đường thai kỳ</h4>
+                <p class="mt-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">Tình trạng đường huyết tăng được phát hiện trong thai kỳ. Bệnh cần được theo dõi và chăm sóc y tế vì có thể ảnh hưởng đến sức khỏe của mẹ và bé; người mẹ cũng có nguy cơ mắc tiểu đường Tuýp 2 cao hơn sau này.</p>
+              </article>
+              <article class="bg-slate-50 dark:bg-slate-900/50 border-l-4 border-amber-500 rounded-r-xl p-4">
+                <h4 class="font-bold text-slate-800 dark:text-slate-100">Tiền tiểu đường</h4>
+                <p class="mt-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">Mức đường huyết cao hơn bình thường nhưng chưa đạt ngưỡng chẩn đoán tiểu đường. Đây là dấu hiệu cảnh báo để trao đổi với nhân viên y tế và cân nhắc can thiệp sớm nhằm giảm nguy cơ tiến triển thành Tuýp 2. Tiền tiểu đường không phải là một tuýp tiểu đường.</p>
+              </article>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <h3 class="text-lg font-bold text-brand-700 dark:text-brand-400">3. Tiêu chuẩn chẩn đoán y khoa (NIDDK / ADA)</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-300">Các ngưỡng tham khảo cho người không mang thai:</p>
+            <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+              <table class="w-full min-w-[680px] text-left text-sm border-collapse">
+                <caption class="sr-only">Ngưỡng xét nghiệm đường huyết để đánh giá bình thường, tiền tiểu đường và tiểu đường</caption>
+                <thead>
+                  <tr class="bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200">
+                    <th scope="col" class="p-3 font-bold">Phương pháp xét nghiệm</th>
+                    <th scope="col" class="p-3 font-bold">Bình thường</th>
+                    <th scope="col" class="p-3 font-bold">Tiền tiểu đường</th>
+                    <th scope="col" class="p-3 font-bold">Tiểu đường</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                  <tr class="bg-white dark:bg-slate-800">
+                    <th scope="row" class="p-3 align-top font-semibold text-slate-800 dark:text-slate-100">HbA1c<br><span class="font-normal text-slate-500 dark:text-slate-400">Đường huyết trung bình khoảng 3 tháng</span></th>
+                    <td class="p-3 align-top">&lt; 5.7%</td>
+                    <td class="p-3 align-top">5.7% – 6.4%</td>
+                    <td class="p-3 align-top">≥ 6.5%</td>
+                  </tr>
+                  <tr class="bg-slate-50 dark:bg-slate-900/50">
+                    <th scope="row" class="p-3 align-top font-semibold text-slate-800 dark:text-slate-100">FPG<br><span class="font-normal text-slate-500 dark:text-slate-400">Đường huyết lúc đói (ít nhất 8 giờ)</span></th>
+                    <td class="p-3 align-top">≤ 99 mg/dL<br>(≤ 5.5 mmol/L)</td>
+                    <td class="p-3 align-top">100 – 125 mg/dL<br>(5.6 – 6.9 mmol/L)</td>
+                    <td class="p-3 align-top">≥ 126 mg/dL<br>(≥ 7.0 mmol/L)</td>
+                  </tr>
+                  <tr class="bg-white dark:bg-slate-800">
+                    <th scope="row" class="p-3 align-top font-semibold text-slate-800 dark:text-slate-100">OGTT 2 giờ<br><span class="font-normal text-slate-500 dark:text-slate-400">Nghiệm pháp dung nạp glucose đường uống</span></th>
+                    <td class="p-3 align-top">≤ 139 mg/dL<br>(≤ 7.7 mmol/L)</td>
+                    <td class="p-3 align-top">140 – 199 mg/dL<br>(7.8 – 11.0 mmol/L)</td>
+                    <td class="p-3 align-top">≥ 200 mg/dL<br>(≥ 11.1 mmol/L)</td>
+                  </tr>
+                  <tr class="bg-slate-50 dark:bg-slate-900/50">
+                    <th scope="row" class="p-3 align-top font-semibold text-slate-800 dark:text-slate-100">RPG<br><span class="font-normal text-slate-500 dark:text-slate-400">Đường huyết ngẫu nhiên</span></th>
+                    <td class="p-3 align-top">&lt; 140 mg/dL<br>(&lt; 7.8 mmol/L)</td>
+                    <td class="p-3 align-top">—</td>
+                    <td class="p-3 align-top">≥ 200 mg/dL<br>(≥ 11.1 mmol/L), kèm triệu chứng tăng đường huyết</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Kết quả thường cần được xác nhận bằng xét nghiệm lặp lại nếu không có triệu chứng rõ ràng. Chẩn đoán do nhân viên y tế thực hiện; ngưỡng có thể khác trong thai kỳ hoặc một số tình trạng đặc biệt.</p>
+          </div>
+
+          <details class="group bg-slate-50 dark:bg-slate-900/50 border-l-4 border-brand-600 rounded-r-xl p-4 transition-all" open>
+            <summary class="font-bold cursor-pointer text-slate-800 dark:text-slate-100 flex justify-between items-center">
+              <span>4. Triệu chứng thường gặp</span>
+              <i class="fa-solid fa-chevron-down text-xs transition-transform group-open:rotate-180"></i>
+            </summary>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Khát nước nhiều, đi tiểu thường xuyên, mệt mỏi, sụt cân không chủ ý và nhìn mờ.
+            </p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- SECTION 3: NGUY CƠ VÀ BIẾN CHỨNG -->
+    <section id="bien-chung" role="tabpanel" aria-labelledby="tab-bien-chung" tabindex="0" hidden class="scroll-mt-20">
+      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 p-4 md:p-6 space-y-4">
+        <h2 class="text-xl md:text-2xl font-bold text-brand-700 dark:text-brand-400 border-b border-slate-200 dark:border-slate-700 pb-3 flex items-center gap-2">
+          <i class="fa-solid fa-triangle-exclamation"></i> Biến Chứng
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <details class="group bg-slate-50 dark:bg-slate-900/50 border-l-4 border-rose-500 rounded-r-xl p-4 transition-all" open>
+            <summary class="font-bold cursor-pointer text-slate-800 dark:text-slate-100 flex justify-between items-center">
+              <span>Tim mạch</span>
+              <i class="fa-solid fa-chevron-down text-xs transition-transform group-open:rotate-180"></i>
+            </summary>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Tăng nguy cơ nhồi máu cơ tim và đột quỵ.</p>
+          </details>
+
+          <details class="group bg-slate-50 dark:bg-slate-900/50 border-l-4 border-amber-500 rounded-r-xl p-4 transition-all" open>
+            <summary class="font-bold cursor-pointer text-slate-800 dark:text-slate-100 flex justify-between items-center">
+              <span>Tổn thương thận</span>
+              <i class="fa-solid fa-chevron-down text-xs transition-transform group-open:rotate-180"></i>
+            </summary>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Có thể dẫn đến suy thận mạn tính.</p>
+          </details>
+
+          <details class="group bg-slate-50 dark:bg-slate-900/50 border-l-4 border-indigo-500 rounded-r-xl p-4 transition-all" open>
+            <summary class="font-bold cursor-pointer text-slate-800 dark:text-slate-100 flex justify-between items-center">
+              <span>Mất thị lực</span>
+              <i class="fa-solid fa-chevron-down text-xs transition-transform group-open:rotate-180"></i>
+            </summary>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Tổn thương mạch máu ở mắt gây mù lòa (bệnh võng mạc tiểu đường).</p>
+          </details>
+
+          <details class="group bg-slate-50 dark:bg-slate-900/50 border-l-4 border-purple-500 rounded-r-xl p-4 transition-all" open>
+            <summary class="font-bold cursor-pointer text-slate-800 dark:text-slate-100 flex justify-between items-center">
+              <span>Tổn thương thần kinh và bàn chân</span>
+              <i class="fa-solid fa-chevron-down text-xs transition-transform group-open:rotate-180"></i>
+            </summary>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Lưu thông máu kém và tổn thương thần kinh dẫn đến loét bàn chân và có thể phải cắt cụt chi.</p>
+          </details>
+
+          <details class="group bg-slate-50 dark:bg-slate-900/50 border-l-4 border-sky-500 rounded-r-xl p-4 transition-all md:col-span-2" open>
+            <summary class="font-bold cursor-pointer text-slate-800 dark:text-slate-100 flex justify-between items-center">
+              <span>Nguy cơ khi mang thai</span>
+              <i class="fa-solid fa-chevron-down text-xs transition-transform group-open:rotate-180"></i>
+            </summary>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Biến chứng khi sinh và tăng nguy cơ mắc tiểu đường type 2 trong tương lai cho cả mẹ và con.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- SECTION 4: YẾU TỐ NGUY CƠ -->
+    <section id="yeu-to" role="tabpanel" aria-labelledby="tab-yeu-to" tabindex="0" hidden class="scroll-mt-20">
+      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 p-4 md:p-6 space-y-4">
+        <h2 class="text-xl md:text-2xl font-bold text-brand-700 dark:text-brand-400 border-b border-slate-200 dark:border-slate-700 pb-3 flex items-center gap-2">
+          <i class="fa-solid fa-clipboard-check"></i> Nguy Cơ Mắc Bệnh
+        </h2>
+        <p class="text-sm text-slate-600 dark:text-slate-300">Các yếu tố sau có thể làm tăng nguy cơ mắc bệnh, đặc biệt là tiểu đường type 2; có yếu tố nguy cơ không đồng nghĩa chắc chắn sẽ mắc bệnh.</p>
+
+        <details class="group bg-slate-50 dark:bg-slate-900/50 border-l-4 border-brand-600 rounded-r-xl p-4 transition-all" open>
+          <summary class="font-bold cursor-pointer text-slate-800 dark:text-slate-100 flex justify-between items-center">
+            <span>Các yếu tố nguy cơ chính</span>
+            <i class="fa-solid fa-chevron-down text-xs transition-transform group-open:rotate-180"></i>
+          </summary>
+          <ul class="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300 pl-2">
+            <li class="flex items-center gap-2"><i class="fa-solid fa-angle-right text-brand-500"></i> Thừa cân / béo phì</li>
+            <li class="flex items-center gap-2"><i class="fa-solid fa-angle-right text-brand-500"></i> Thiếu hoạt động thể chất</li>
+            <li class="flex items-center gap-2"><i class="fa-solid fa-angle-right text-brand-500"></i> Di truyền / tiền sử gia đình</li>
+            <li class="flex items-center gap-2"><i class="fa-solid fa-angle-right text-brand-500"></i> Chế độ ăn không lành mạnh (nhiều đường và chất béo bão hòa)</li>
+            <li class="flex items-center gap-2"><i class="fa-solid fa-angle-right text-brand-500"></i> Sử dụng thuốc lá / hút thuốc</li>
+          </ul>
+        </details>
+        <h3 class="text-lg font-bold text-brand-700 dark:text-brand-400 pt-2">Nguyên nhân và cơ chế liên quan</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <details class="group bg-slate-50 dark:bg-slate-900/50 border-l-4 border-brand-600 rounded-r-xl p-4 transition-all" open>
+            <summary class="font-bold cursor-pointer text-slate-800 dark:text-slate-100">Lối sống và hành vi</summary>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Chế độ ăn không lành mạnh, thiếu vận động, hút thuốc, uống nhiều rượu bia, căng thẳng kéo dài và ngủ kém.</p>
+          </details>
+          <details class="group bg-slate-50 dark:bg-slate-900/50 border-l-4 border-brand-600 rounded-r-xl p-4 transition-all" open>
+            <summary class="font-bold cursor-pointer text-slate-800 dark:text-slate-100">Di truyền và biểu sinh</summary>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Các biến thể gen di truyền và những thay đổi biểu hiện gen do môi trường (metyl hóa DNA).</p>
+          </details>
+          <details class="group bg-slate-50 dark:bg-slate-900/50 border-l-4 border-brand-600 rounded-r-xl p-4 transition-all" open>
+            <summary class="font-bold cursor-pointer text-slate-800 dark:text-slate-100">Môi trường và tác nhân gây bệnh</summary>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Tiếp xúc với ô nhiễm không khí (bụi mịn PM2.5), kim loại nặng, bức xạ, vi khuẩn và vi rút.</p>
+          </details>
+          <details class="group bg-slate-50 dark:bg-slate-900/50 border-l-4 border-brand-600 rounded-r-xl p-4 transition-all" open>
+            <summary class="font-bold cursor-pointer text-slate-800 dark:text-slate-100">Lão hóa sinh học và chuyển hóa</summary>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Lão hóa tế bào, suy giảm khả năng sửa chữa DNA, kháng insulin và lão hóa miễn dịch.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- SECTION 5: NGUYÊN LÝ THIẾT BỊ ĐO -->
+    <section id="nguyen-ly" role="tabpanel" aria-labelledby="tab-nguyen-ly" tabindex="0" hidden class="scroll-mt-20">
+      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 p-4 md:p-6 space-y-4">
+        <h2 class="text-xl md:text-2xl font-bold text-brand-700 dark:text-brand-400 border-b border-slate-200 dark:border-slate-700 pb-3 flex items-center gap-2">
+          <i class="fa-solid fa-microscope"></i> Thông Tin Liên Quan Đến Bệnh Tiểu Đường Để Máy Có Thể Hoạt Động
+        </h2>
+
+        <div class="space-y-3">
+          <details class="group bg-slate-50 dark:bg-slate-900/50 border-l-4 border-brand-600 rounded-r-xl p-4 transition-all" open>
+            <summary class="font-bold cursor-pointer text-slate-800 dark:text-slate-100 flex justify-between items-center">
+              <span>1. Dao động áp suất (Oscillometric Pressure Fluctuations)</span>
+              <i class="fa-solid fa-chevron-down text-xs transition-transform group-open:rotate-180"></i>
+            </summary>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Các máy đo huyết áp điện tử tiêu chuẩn dùng vòng bít đo những dao động biên độ nhỏ do máu đập vào thành động mạch khi vòng bít xả hơi. Cảm biến áp suất bên trong phát hiện những rung động rất nhỏ này, sau đó thuật toán xử lý để tính huyết áp tâm thu và huyết áp tâm trương.
+            </p>
+          </details>
+
+          <details class="group bg-slate-50 dark:bg-slate-900/50 border-l-4 border-brand-600 rounded-r-xl p-4 transition-all" open>
+            <summary class="font-bold cursor-pointer text-slate-800 dark:text-slate-100 flex justify-between items-center">
+              <span>2. Quang thể tích đồ (PPG) và vận tốc sóng mạch (PWV)</span>
+              <i class="fa-solid fa-chevron-down text-xs transition-transform group-open:rotate-180"></i>
+            </summary>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Các thiết bị hiện đại không dùng vòng bít hoặc dạng đeo trên người sử dụng cảm biến quang học (đèn LED và đầu thu quang) để theo dõi sự thay đổi thể tích máu ở mô vi mạch. Bằng cách đo thời gian truyền xung (PTT) hoặc vận tốc sóng mạch, hệ thống ước tính huyết áp liên tục mà không cần bơm vòng bít.
+            </p>
+          </details>
+
+          <details class="group bg-slate-50 dark:bg-slate-900/50 border-l-4 border-brand-600 rounded-r-xl p-4 transition-all" open>
+            <summary class="font-bold cursor-pointer text-slate-800 dark:text-slate-100 flex justify-between items-center">
+              <span>3. Độ cứng động mạch và hiệu chỉnh theo chỉ số sinh trắc</span>
+              <i class="fa-solid fa-chevron-down text-xs transition-transform group-open:rotate-180"></i>
+            </summary>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Bệnh tiểu đường mạn tính thường gây vôi hóa mạch máu và làm tăng độ cứng động mạch, khiến tốc độ và biên độ sóng mạch thay đổi. Các thiết bị tiên tiến cần dữ liệu sinh trắc cơ bản (như tuổi, cân nặng và lần hiệu chỉnh thủ công ban đầu) để điều chỉnh hàm chuyển đổi của thuật toán, nhằm bù cho độ đàn hồi mạch máu bị suy giảm.
+            </p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- SECTION: HƯỚNG DẪN SỬ DỤNG -->
+    <section id="huong-dan" role="tabpanel" aria-labelledby="tab-huong-dan" tabindex="0" hidden class="scroll-mt-20">
+      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 p-4 md:p-6 space-y-5">
+        <h2 class="text-xl md:text-2xl font-bold text-brand-700 dark:text-brand-400 border-b border-slate-200 dark:border-slate-700 pb-3 flex items-center gap-2">
+          <i class="fa-solid fa-circle-question"></i> Hướng Dẫn Sử Dụng
+        </h2>
+        <div>
+          <h3 class="font-bold mb-2">Chuyển giữa các tab</h3>
+          <p class="text-sm text-slate-600 dark:text-slate-300">Chọn một tab trên thanh điều hướng để mở riêng trang nhật ký, nhắc nhở, thông tin bệnh, nguy cơ mắc bệnh, biến chứng hoặc nguyên lý thiết bị. Bạn cũng có thể dùng mục <strong>Truy cập nhanh</strong> ở trang nhật ký. Đường dẫn của tab được lưu trên thanh địa chỉ để có thể mở lại hoặc chia sẻ.</p>
+        </div>
+        <div>
+          <h3 class="font-bold mb-2">Ghi và theo dõi đường huyết</h3>
+          <ol class="list-decimal pl-5 space-y-1 text-sm text-slate-600 dark:text-slate-300">
+            <li>Trong tab Nhật ký, nhập chỉ số, thời điểm và thời gian đo; sau đó lưu lại.</li>
+            <li>Hoặc kết nối máy đo tương thích bằng Bluetooth BLE nếu trình duyệt và thiết bị hỗ trợ.</li>
+            <li>Xem thống kê, biểu đồ và lịch sử; có thể xuất CSV/JSON hoặc nhập dữ liệu sao lưu JSON.</li>
+          </ol>
+        </div>
+        <div>
+          <h3 class="font-bold mb-2">Nhắc nhở và HbA1c</h3>
+          <p class="text-sm text-slate-600 dark:text-slate-300">Mở tab Nhắc nhở & HbA1c để thêm giờ đo/uống thuốc và lưu kết quả xét nghiệm. Nhắc nhở chỉ hoạt động khi trang còn mở; dữ liệu được lưu trên trình duyệt của thiết bị hiện tại.</p>
+        </div>
+        <div>
+          <h3 class="font-bold mb-2">Đưa nhắc nhở vào lịch để nhận thông báo</h3>
+          <ol class="list-decimal pl-5 space-y-1 text-sm text-slate-600 dark:text-slate-300">
+            <li>Trong tab Nhắc nhở & HbA1c, chọn <strong>Tải lịch nhắc nhở (.ics)</strong> để xuất tất cả nhắc nhở; hoặc chọn <strong>Thêm vào lịch</strong> cạnh một nhắc nhở.</li>
+            <li>Mở tệp .ics vừa tải bằng ứng dụng lịch, hoặc nhập tệp vào Google Calendar, Apple Calendar hay Outlook và chọn lịch muốn lưu.</li>
+            <li>Bật thông báo cho sự kiện/lịch trong ứng dụng lịch và trên thiết bị. Lịch sẽ nhắc hằng ngày vào giờ đã đặt.</li>
+          </ol>
+          <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Trang web không thể tự thêm sự kiện trực tiếp vào tài khoản lịch. Sau khi thay đổi nhắc nhở, hãy tải và nhập lại tệp lịch; việc nhập lại có thể tạo sự kiện trùng lặp nếu không xóa bản cũ. Khả năng giữ báo thức .ics tùy ứng dụng lịch và cài đặt thông báo của bạn.</p>
+        </div>
+        <div class="rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/50 dark:border-amber-800 p-4 text-sm text-amber-900 dark:text-amber-200">
+          Thông tin và ngưỡng hiển thị chỉ nhằm tham khảo, không thay thế chẩn đoán hoặc hướng dẫn của bác sĩ. Hãy trao đổi với nhân viên y tế về chỉ số và cách xử trí phù hợp.
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    (function () {
+      const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+      const panels = Array.from(document.querySelectorAll('[role="tabpanel"]'));
+      const tabIds = new Set(tabs.map(tab => tab.getAttribute('aria-controls')));
+      const legacyTabs = { 'nguyen-nhan': 'yeu-to' };
+
+      function activateTab(requestedId) {
+        const id = legacyTabs[requestedId] || requestedId;
+        const activeId = tabIds.has(id) ? id : 'nhat-ky';
+
+        tabs.forEach(tab => {
+          const selected = tab.getAttribute('aria-controls') === activeId;
+          tab.setAttribute('aria-selected', String(selected));
+          tab.tabIndex = selected ? 0 : -1;
+          if (selected) tab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        });
+        panels.forEach(panel => {
+          panel.hidden = panel.id !== activeId;
+        });
+
+        if (activeId === 'nhat-ky') {
+          requestAnimationFrame(() => {
+            if (typeof chartInstance !== 'undefined' && chartInstance) chartInstance.resize();
+            else if (typeof renderApp === 'function') renderApp();
+          });
+        }
+      }
+
+      tabs.forEach((tab, index) => {
+        tab.addEventListener('keydown', event => {
+          let nextIndex = index;
+          if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
+          else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
+          else if (event.key === 'Home') nextIndex = 0;
+          else if (event.key === 'End') nextIndex = tabs.length - 1;
+          else return;
+
+          event.preventDefault();
+          tabs[nextIndex].focus();
+          window.location.hash = tabs[nextIndex].getAttribute('aria-controls');
+        });
+      });
+
+      window.addEventListener('hashchange', () => activateTab(window.location.hash.slice(1)));
+      activateTab(window.location.hash.slice(1));
+    })();
+  </script>
+
+  <!-- Footer -->
+  <footer class="bg-slate-100 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 py-6 px-4 text-center text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-12">
+    <div class="max-w-6xl mx-auto space-y-2">
+      <p class="font-medium">⚠️ Trang web chỉ mang tính tham khảo và hỗ trợ theo dõi cá nhân, không thay thế chẩn đoán hoặc chỉ định từ bác sĩ chuyên khoa.</p>
+      <p>&copy; 2026 - Ứng dụng Quản lý Nhật ký Đường huyết Cá nhân.</p>
+    </div>
+  </footer>
+
+  <!-- JAVASCRIPT LOGIC WITH WEB BLUETOOTH API -->
+  <script>
+    // State management
+    let records = [];
+    let currentFilter = 'all';
+    let chartInstance = null;
+
+    // Web Bluetooth Variables
+    let bluetoothDevice = null;
+    let glucoseCharacteristic = null;
+    const GLUCOSE_SERVICE_UUID = 0x1808; // 1808 - Glucose Service Standard
+    const GLUCOSE_MEASUREMENT_UUID = 0x2A18; // 2A18 - Glucose Measurement Characteristic
+
+    // DOM Elements
+    const recordForm = document.getElementById('recordForm');
+    const recordValueInput = document.getElementById('recordValue');
+    const recordTypeSelect = document.getElementById('recordType');
+    const recordDateTimeInput = document.getElementById('recordDateTime');
+    const statusAlert = document.getElementById('statusAlert');
+    const statusAlertText = document.getElementById('statusAlertText');
+    const historyTableBody = document.getElementById('historyTableBody');
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const themeIcon = document.getElementById('themeIcon');
+    const resetFormBtn = document.getElementById('resetFormBtn');
+
+    // Bluetooth DOM Elements
+    const connectBtBtn = document.getElementById('connectBtBtn');
+    const disconnectBtBtn = document.getElementById('disconnectBtBtn');
+    const btStatusText = document.getElementById('btStatusText');
+    const btDeviceBadge = document.getElementById('btDeviceBadge');
+
+    // Init App State
+    document.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      setDefaultDateTime();
+      loadRecordsFromStorage();
+      renderApp();
+
+      // Check Web Bluetooth Support
+      if (!navigator.bluetooth) {
+        btStatusText.textContent = 'Trình duyệt không hỗ trợ Web Bluetooth. Vui lòng dùng Chrome, Edge hoặc Opera.';
+        connectBtBtn.disabled = true;
+        connectBtBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+
+      // Event Listeners
+      recordForm.addEventListener('submit', handleAddRecord);
+      resetFormBtn.addEventListener('click', setDefaultDateTime);
+      themeToggleBtn.addEventListener('click', toggleTheme);
+      connectBtBtn.addEventListener('click', requestBluetoothDevice);
+      disconnectBtBtn.addEventListener('click', disconnectBluetoothDevice);
+      document.getElementById('exportCsvBtn').addEventListener('click', exportToCSV);
+      document.getElementById('exportJsonBtn').addEventListener('click', exportToJSON);
+      document.getElementById('importJsonInput').addEventListener('change', importFromJSON);
+      document.getElementById('clearAllBtn').addEventListener('click', handleClearAll);
+
+      // Filter Buttons
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.querySelectorAll('.filter-btn').forEach(b => {
+            b.classList.remove('bg-white', 'dark:bg-slate-800', 'text-brand-700', 'dark:text-brand-400', 'font-bold', 'shadow-sm');
+            b.classList.add('text-slate-600', 'dark:text-slate-300');
+          });
+          e.currentTarget.classList.add('bg-white', 'dark:bg-slate-800', 'text-brand-700', 'dark:text-brand-400', 'font-bold', 'shadow-sm');
+          e.currentTarget.classList.remove('text-slate-600', 'dark:text-slate-300');
+          currentFilter = e.currentTarget.getAttribute('data-filter');
+          renderApp();
+        });
+      });
+    });
+
+    // Dark Mode Toggle
+    function initTheme() {
+      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+        themeIcon.className = 'fa-solid fa-sun text-lg text-amber-400';
+      } else {
+        document.documentElement.classList.remove('dark');
+        themeIcon.className = 'fa-solid fa-moon text-lg';
+      }
+    }
+
+    function toggleTheme() {
+      if (document.documentElement.classList.contains('dark')) {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+        themeIcon.className = 'fa-solid fa-moon text-lg';
+      } else {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+        themeIcon.className = 'fa-solid fa-sun text-lg text-amber-400';
+      }
+      renderChart(getFilteredRecords());
+    }
+
+    // Set default datetime to now
+    function setDefaultDateTime() {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      recordDateTimeInput.value = now.toISOString().slice(0, 16);
+      recordValueInput.value = '';
+    }
+
+    // Storage Management
+    function loadRecordsFromStorage() {
+      try {
+        const stored = localStorage.getItem('bloodSugarRecords');
+        records = stored ? JSON.parse(stored) : [];
+        if (!Array.isArray(records)) records = [];
+      } catch (e) {
+        records = [];
+      }
+    }
+
+    function saveRecordsToStorage() {
+      try {
+        localStorage.setItem('bloodSugarRecords', JSON.stringify(records));
+      } catch (e) {
+        console.error('Không thể lưu vào localStorage', e);
+      }
+    }
+
+    // Health Status Evaluation
+    function getStatus(value) {
+      const val = Number(value);
+      if (val < 70) {
+        return {
+          text: '⚠️ Thấp (Hạ đường huyết)',
+          badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800',
+          warn: true,
+          alertBg: 'bg-amber-50 text-amber-900 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-200 dark:border-amber-700'
+        };
+      }
+      if (val > 180) {
+        return {
+          text: '⚠️ Cao (Tăng đường huyết)',
+          badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800',
+          warn: true,
+          alertBg: 'bg-rose-50 text-rose-900 border border-rose-300 dark:bg-rose-950/80 dark:text-rose-200 dark:border-rose-700'
+        };
+      }
+      return {
+        text: '✅ Bình thường / An toàn',
+        badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800',
+        warn: false,
+        alertBg: 'bg-emerald-50 text-emerald-900 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-200 dark:border-emerald-700'
+      };
+    }
+
+    // WEB BLUETOOTH INTEGRATION (BLE GLUCOSE SERVICE)
+    async function requestBluetoothDevice() {
+      try {
+        btStatusText.textContent = 'Đang tìm kiếm máy đo đường huyết xung quanh...';
+        btDeviceBadge.className = 'inline-flex items-center px-2.5 py-1 rounded-full font-medium bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 pulse-blue';
+        btDeviceBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 mr-2 animate-ping"></span> Đang kết nối...`;
+
+        bluetoothDevice = await navigator.bluetooth.requestDevice({
+          filters: [
+            { services: [GLUCOSE_SERVICE_UUID] },
+            { services: ['glucose'] }
+          ],
+          optionalServices: [GLUCOSE_SERVICE_UUID, 'glucose']
+        });
+
+        bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+        btStatusText.textContent = `Đang kết nối với cổng GATT của ${bluetoothDevice.name || 'Thiết bị'}...`;
+        const server = await bluetoothDevice.gatt.connect();
+
+        btStatusText.textContent = 'Đang lấy dữ liệu dịch vụ Glucose Service (0x1808)...';
+        const service = await server.getPrimaryService(GLUCOSE_SERVICE_UUID);
+
+        btStatusText.textContent = 'Đang đăng ký nhận tín hiệu Glucose Measurement (0x2A18)...';
+        glucoseCharacteristic = await service.getCharacteristic(GLUCOSE_MEASUREMENT_UUID);
+
+        await glucoseCharacteristic.startNotifications();
+        glucoseCharacteristic.addEventListener('characteristicvaluechanged', handleGlucoseMeasurement);
+
+        // Connected Success UI
+        btStatusText.textContent = `Sẵn sàng nhận chỉ số từ máy đo đường huyết!`;
+        btDeviceBadge.className = 'inline-flex items-center px-2.5 py-1 rounded-full font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300';
+        btDeviceBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span> Đã kết nối: ${bluetoothDevice.name || 'Glucose Meter'}`;
+
+        connectBtBtn.classList.add('hidden');
+        disconnectBtBtn.classList.remove('hidden');
+
+      } catch (error) {
+        console.error('Bluetooth Connection Error:', error);
+        btStatusText.textContent = `Kết nối thất bại hoặc bị hủy: ${error.message || error}`;
+        btDeviceBadge.className = 'inline-flex items-center px-2.5 py-1 rounded-full font-medium bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300';
+        btDeviceBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500 mr-2"></span> Kết nối lỗi`;
+      }
+    }
+
+    function disconnectBluetoothDevice() {
+      if (bluetoothDevice && bluetoothDevice.gatt.connected) {
+        bluetoothDevice.gatt.disconnect();
+      } else {
+        onDisconnected();
+      }
+    }
+
+    function onDisconnected() {
+      btStatusText.textContent = 'Đã ngắt kết nối Bluetooth.';
+      btDeviceBadge.className = 'inline-flex items-center px-2.5 py-1 rounded-full font-medium bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300';
+      btDeviceBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-400 mr-2"></span> Chưa có kết nối`;
+
+      connectBtBtn.classList.remove('hidden');
+      disconnectBtBtn.classList.add('hidden');
+    }
+
+    // PARSE BLE GLUCOSE MEASUREMENT PACKET (Standard GATT Specification)
+    function handleGlucoseMeasurement(event) {
+      const value = event.target.value;
+      const dataView = new DataView(value.buffer);
+      
+      let offset = 0;
+      const flags = dataView.getUint8(offset);
+      offset += 1;
+
+      // Flags analysis
+      const timeOffsetPresent = (flags & 0x01) !== 0;
+      const typeAndLocationPresent = (flags & 0x02) !== 0;
+      const concentrationUnitInMmol = (flags & 0x04) !== 0; // 0 = kg/L (or mg/dL), 1 = mol/L (or mmol/L)
+      const sensorStatusAnnunciationPresent = (flags & 0x08) !== 0;
+      const contextInformationFollows = (flags & 0x10) !== 0;
+
+      // Sequence Number
+      const sequenceNumber = dataView.getUint16(offset, true);
+      offset += 2;
+
+      // Base Time (7 Bytes: Year, Month, Day, Hours, Minutes, Seconds)
+      const year = dataView.getUint16(offset, true);
+      const month = dataView.getUint8(offset + 2) - 1; // 0-indexed in JS Date
+      const day = dataView.getUint8(offset + 3);
+      const hours = dataView.getUint8(offset + 4);
+      const minutes = dataView.getUint8(offset + 5);
+      const seconds = dataView.getUint8(offset + 6);
+      offset += 7;
+
+      let recordDate = new Date(year, month, day, hours, minutes, seconds);
+
+      // Time Offset if present
+      if (timeOffsetPresent) {
+        const timeOffsetMinutes = dataView.getInt16(offset, true);
+        offset += 2;
+        recordDate = new Date(recordDate.getTime() + timeOffsetMinutes * 60000);
+      }
+
+      // Glucose Concentration (SFLOAT: 16-bit float IEEE-11073)
+      let rawGlucose = 0;
+      if (dataView.byteLength >= offset + 2) {
+        const sfloatBytes = dataView.getUint16(offset, true);
+        offset += 2;
+        rawGlucose = parseSFloat(sfloatBytes);
+      }
+
+      let glucoseMgDl = 0;
+      if (concentrationUnitInMmol) {
+        // Convert mmol/L to mg/dL (1 mmol/L = 18.0182 mg/dL)
+        glucoseMgDl = Math.round(rawGlucose * 18.0182 * 10) / 10;
+      } else {
+        // kg/L -> mg/dL conversion (standard BLE SFLOAT is in kg/L = 10^5 mg/dL)
+        glucoseMgDl = Math.round(rawGlucose * 100000 * 10) / 10;
+        if (glucoseMgDl > 1000 || glucoseMgDl < 10) {
+          glucoseMgDl = Math.round(rawGlucose); // Fallback if raw is directly in mg/dL
+        }
+      }
+
+      // Read Sample Type & Location if present
+      let sampleType = 'Khác';
+      if (typeAndLocationPresent && dataView.byteLength >= offset + 1) {
+        const typeAndLocation = dataView.getUint8(offset);
+        const sampleTypeVal = typeAndLocation & 0x0F;
+        if (sampleTypeVal === 1) sampleType = 'Lúc đói';
+        else if (sampleTypeVal === 2) sampleType = 'Sau ăn';
+      }
+
+      // Automatically add record to state
+      const newRecord = {
+        id: Date.now().toString(),
+        value: glucoseMgDl,
+        type: sampleType,
+        source: `Bluetooth (${bluetoothDevice?.name || 'Máy đo BLE'})`,
+        timestamp: recordDate.toISOString()
+      };
+
+      records.push(newRecord);
+      records.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+      saveRecordsToStorage();
+      renderApp();
+
+      // Alert UI
+      const status = getStatus(glucoseMgDl);
+      statusAlertText.innerHTML = `<strong>[Bluetooth Sync]</strong> Nhận dữ liệu thành công: <strong>${glucoseMgDl} mg/dL</strong> (${sampleType}) - ${status.text}. ${getAction(glucoseMgDl)}`;
+      statusAlert.className = `p-3.5 rounded-xl text-sm font-semibold flex items-center justify-between transition-all ${status.alertBg}`;
+      statusAlert.classList.remove('hidden');
+    }
+
+    // Helper: IEEE-11073 16-bit SFLOAT decoder
+    function parseSFloat(bytes) {
+      const exponent = (bytes >> 12) & 0x0F;
+      let mantissa = bytes & 0x0FFF;
+
+      // Handle negative exponent (4-bit signed int)
+      let realExponent = exponent >= 8 ? exponent - 16 : exponent;
+
+      // Handle negative mantissa (12-bit signed int)
+      if (mantissa >= 0x0800) {
+        mantissa = mantissa - 0x1000;
+      }
+
+      return mantissa * Math.pow(10, realExponent);
+    }
+
+    // Add Record manually
+    function handleAddRecord(e) {
+      e.preventDefault();
+      const val = parseFloat(recordValueInput.value);
+      const type = recordTypeSelect.value;
+      const dateTimeVal = recordDateTimeInput.value;
+
+      if (!val || !dateTimeVal) return;
+
+      const newRecord = {
+        id: Date.now().toString(),
+        value: val,
+        type: type,
+        source: 'Nhập thủ công',
+        timestamp: new Date(dateTimeVal).toISOString()
+      };
+
+      records.push(newRecord);
+      records.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+      saveRecordsToStorage();
+      renderApp();
+
+      // Show alert banner
+      const status = getStatus(val);
+      statusAlertText.textContent = `Đã ghi nhận: ${val} mg/dL (${type}) - ${status.text}. ${getAction(val)}`;
+      statusAlert.className = `p-3.5 rounded-xl text-sm font-semibold flex items-center justify-between transition-all ${status.alertBg}`;
+      statusAlert.classList.remove('hidden');
+
+      setDefaultDateTime();
+    }
+
+    // Delete Single Record
+    function deleteRecord(id) {
+      records = records.filter(r => r.id !== id);
+      saveRecordsToStorage();
+      renderApp();
+    }
+
+    // Clear All Records
+    function handleClearAll() {
+      if (!records.length) return;
+      if (confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử đo đường huyết không?')) {
+        records = [];
+        saveRecordsToStorage();
+        renderApp();
+        statusAlert.classList.add('hidden');
+      }
+    }
+
+    // Filter Logic
+    function getFilteredRecords() {
+      if (currentFilter === 'all') return [...records];
+      
+      const now = new Date();
+      return records.filter(r => {
+        const itemDate = new Date(r.timestamp);
+        if (currentFilter === 'today') {
+          return itemDate.toDateString() === now.toDateString();
+        }
+        if (currentFilter === '7days') {
+          const diffDays = (now - itemDate) / (1000 * 3600 * 24);
+          return diffDays <= 7;
+        }
+        if (currentFilter === '30days') {
+          const diffDays = (now - itemDate) / (1000 * 3600 * 24);
+          return diffDays <= 30;
+        }
+        return true;
+      });
+    }
+
+    // Main Render Coordinator
+    function renderApp() {
+      const filtered = getFilteredRecords();
+      renderStats(filtered);
+      renderChart(filtered);
+      renderHistoryTable(filtered);
+    }
+
+    // Statistics Calculation
+    function renderStats(data) {
+      if (!data.length) {
+        document.getElementById('statAvg').innerHTML = `-- <span class="text-xs font-normal">mg/dL</span>`;
+        document.getElementById('statMin').innerHTML = `-- <span class="text-xs font-normal">mg/dL</span>`;
+        document.getElementById('statMax').innerHTML = `-- <span class="text-xs font-normal">mg/dL</span>`;
+        document.getElementById('statWarnings').innerHTML = `0 <span class="text-xs font-normal">lần</span>`;
+        return;
+      }
+
+      const values = data.map(d => d.value);
+      const avg = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const warnings = values.filter(v => v < 70 || v > 180).length;
+
+      document.getElementById('statAvg').innerHTML = `${avg} <span class="text-xs font-normal">mg/dL</span>`;
+      document.getElementById('statMin').innerHTML = `${min} <span class="text-xs font-normal">mg/dL</span>`;
+      document.getElementById('statMax').innerHTML = `${max} <span class="text-xs font-normal">mg/dL</span>`;
+      document.getElementById('statWarnings').innerHTML = `${warnings} <span class="text-xs font-normal">lần</span>`;
+    }
+
+    // Render Table
+    function renderHistoryTable(data) {
+      if (!data.length) {
+        historyTableBody.innerHTML = `
+          <tr>
+            <td colspan="6" class="py-8 text-center text-slate-400 dark:text-slate-500 text-sm">
+              <i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>
+              Chưa có dữ liệu nhật ký nào. Kết nối máy đo Bluetooth hoặc thêm thủ công ở trên!
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      // Display newest records first in the table
+      const displayData = [...data].reverse();
+
+      historyTableBody.innerHTML = displayData.map(r => {
+        const dateObj = new Date(r.timestamp);
+        const formattedDate = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const formattedTime = dateObj.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        const status = getStatus(r.value);
+        const sourceName = r.source || 'Nhập thủ công';
+
+        return `
+          <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition">
+            <td class="py-3 px-4 whitespace-nowrap">
+              <span class="font-medium text-slate-800 dark:text-slate-200">${formattedDate}</span>
+              <span class="text-xs text-slate-500 dark:text-slate-400 ml-1.5">${formattedTime}</span>
+            </td>
+            <td class="py-3 px-4 font-medium text-slate-700 dark:text-slate-300">
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                ${r.type}
+              </span>
+            </td>
+            <td class="py-3 px-4 font-bold text-base text-slate-900 dark:text-slate-100">
+              ${r.value} <span class="text-xs font-normal text-slate-500">mg/dL</span>
+            </td>
+            <td class="py-3 px-4 text-xs text-slate-600 dark:text-slate-400">
+              ${sourceName.includes('Bluetooth') 
+                ? `<span class="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium"><i class="fa-bluetooth-b fa-brands"></i> ${sourceName}</span>` 
+                : `<span class="inline-flex items-center gap-1 text-slate-500"><i class="fa-solid fa-keyboard"></i> ${sourceName}</span>`}
+            </td>
+            <td class="py-3 px-4">
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${status.badgeClass}">
+                ${status.text}
+              </span>
+            </td>
+            <td class="py-3 px-4 text-center">
+              <button onclick="deleteRecord('${r.id}')" title="Xóa chỉ số này" class="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition rounded-lg">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Chart.js Rendering with Target Range Annotation
+    function renderChart(data) {
+      const ctx = document.getElementById('bloodSugarChart').getContext('2d');
+      const isDark = document.documentElement.classList.contains('dark');
+      const textColor = isDark ? '#94a3b8' : '#64748b';
+      const gridColor = isDark ? '#334155' : '#e2e8f0';
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      const labels = data.map(r => {
+        const d = new Date(r.timestamp);
+        return `${d.getDate()}/${d.getMonth()+1} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')} (${r.type})`;
+      });
+
+      const values = data.map(r => r.value);
+
+      // Setup Point colors according to target range
+      const pointBackgroundColors = values.map(v => {
+        if (v < 70) return '#f59e0b'; // Amber
+        if (v > 180) return '#f43f5e'; // Rose
+        return '#10b981'; // Emerald
+      });
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Đường huyết (mg/dL)',
+            data: values,
+            borderColor: '#0d9488',
+            backgroundColor: 'rgba(13, 148, 136, 0.1)',
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.25,
+            pointBackgroundColor: pointBackgroundColors,
+            pointBorderColor: pointBackgroundColors,
+            pointRadius: 5,
+            pointHoverRadius: 7
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          scales: {
+            x: {
+              ticks: { color: textColor, font: { size: 11 } },
+              grid: { color: gridColor }
+            },
+            y: {
+              min: Math.max(0, Math.min(...(values.length ? values : [70])) - 20),
+              max: Math.max(220, Math.max(...(values.length ? values : [180])) + 20),
+              ticks: { color: textColor, font: { size: 11 } },
+              grid: { color: gridColor }
+            }
+          },
+          plugins: {
+            legend: {
+              labels: { color: textColor, font: { weight: 'bold' } }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const val = context.parsed.y;
+                  let st = 'Bình thường';
+                  if (val < 70) st = 'Thấp';
+                  if (val > 180) st = 'Cao';
+                  return ` Chỉ số: ${val} mg/dL (${st})`;
+                }
+              }
+            },
+            annotation: {
+              annotations: {
+                targetBox: {
+                  type: 'box',
+                  yMin: 70,
+                  yMax: 180,
+                  backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                  borderColor: 'rgba(16, 185, 129, 0.3)',
+                  borderWidth: 1,
+                  label: {
+                    display: true,
+                    content: 'Vùng an toàn (70 - 180 mg/dL)',
+                    position: 'start',
+                    color: '#10b981',
+                    font: { size: 10, weight: 'bold' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Export to CSV
+    function exportToCSV() {
+      if (!records.length) {
+        alert('Chưa có dữ liệu để xuất file CSV!');
+        return;
+      }
+      let csvContent = '\uFEFF'; // UTF-8 BOM for Excel
+      csvContent += 'ID,Ngay_Gio,Thoi_Diem,Chi_So_mgdL,Nguon,Trang_Thai\n';
+
+      records.forEach(r => {
+        const d = new Date(r.timestamp).toLocaleString('vi-VN');
+        const st = r.value < 70 ? 'Thap' : r.value > 180 ? 'Cao' : 'Binh thuong';
+        const src = r.source || 'Nhap thu cong';
+        csvContent += `"${r.id}","${d}","${r.type}","${r.value}","${src}","${st}"\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Nhat_Ky_Duong_Huyet_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Export to JSON
+    function exportToJSON() {
+      if (!records.length) {
+        alert('Chưa có dữ liệu để xuất file JSON!');
+        return;
+      }
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `DuongHuyet_Backup_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    // Import from JSON
+    function importFromJSON(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        try {
+          const imported = JSON.parse(event.target.result);
+          if (Array.isArray(imported)) {
+            records = imported;
+            records.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            saveRecordsToStorage();
+            renderApp();
+            alert('Đã nạp thành công dữ liệu nhật ký đường huyết!');
+          } else {
+            alert('Cấu trúc file JSON không hợp lệ!');
+          }
+        } catch (err) {
+          alert('Lỗi đọc file JSON: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = ''; // Reset input
+    }
+  </script>
+
+  <!-- NHẮC NHỞ + HbA1c + GỢI Ý HÀNH ĐỘNG -->
+  <script>
+    // Gợi ý việc cần làm theo chỉ số (tham khảo chung, không thay thế bác sĩ)
+    window.getAction = function (v) {
+      v = Number(v);
+      if (v < 70) return 'Việc cần làm: ăn hoặc uống khoảng 15 g đường tác dụng nhanh (ví dụ nước ngọt, nước trái cây), đo lại sau 15 phút. Nếu vẫn thấp hoặc có triệu chứng nặng (lú lẫn, run, vã mồ hôi nhiều), hãy gọi cấp cứu (115) hoặc liên hệ bác sĩ ngay.';
+      if (v > 180) return 'Việc cần làm: uống đủ nước, nghỉ ngơi và đo lại sau một lúc. Nếu cao liên tục hoặc kèm khát nước nhiều, buồn nôn, mệt lả, hãy liên hệ bác sĩ.';
+      return 'Việc cần làm: tiếp tục duy trì ăn uống, vận động và đo đúng lịch.';
+    };
+
+    (function () {
+      var REM_KEY = 'dmReminders', A1C_KEY = 'dmHba1c';
+      var INTERVAL_MONTHS = 3, SOON_DAYS = 14;
+
+      function load(k) {
+        try { var d = JSON.parse(localStorage.getItem(k) || '[]'); return Array.isArray(d) ? d : []; }
+        catch (e) { return []; }
+      }
+      function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+      var reminders = load(REM_KEY);
+      var a1cs = load(A1C_KEY);
+      var notified = {};
+
+      function pad(n) { return String(n).padStart(2, '0'); }
+      function todayStr() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+      function nowHM() { var d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+      function parseDate(s) { var p = String(s).split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+      function fmtDate(d) { return d.toLocaleDateString('vi-VN'); }
+      function eAG(a1c) { return 28.7 * a1c - 46.7; }
+      function nextTest(s) { var d = parseDate(s); d.setMonth(d.getMonth() + INTERVAL_MONTHS); return d; }
+
+      function el(tag, cls, text) {
+        var e = document.createElement(tag);
+        if (cls) e.className = cls;
+        if (text !== undefined) e.textContent = text;
+        return e;
+      }
+
+      // ---------- Nhắc nhở ----------
+      function isDue(r) { return r.time <= nowHM() && r.lastDone !== todayStr(); }
+
+      function renderReminders() {
+        var ul = document.getElementById('reminderList');
+        ul.innerHTML = '';
+        if (!reminders.length) {
+          ul.appendChild(el('li', 'text-sm text-slate-500 dark:text-slate-400', 'Chưa có nhắc nhở nào. Hãy thêm giờ đo đường huyết hoặc giờ uống thuốc.'));
+          return;
+        }
+        reminders.slice().sort(function (a, b) { return a.time < b.time ? -1 : 1; }).forEach(function (r) {
+          var li = el('li', 'flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800');
+          var left = el('div', 'min-w-0');
+          left.appendChild(el('p', 'font-semibold text-sm text-slate-800 dark:text-slate-100', r.time + ' – ' + r.kind));
+          if (r.note) left.appendChild(el('p', 'text-xs text-slate-500 dark:text-slate-400 truncate', r.note));
+          var done = r.lastDone === todayStr();
+          var chipCls = done ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                      : isDue(r) ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                      : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300';
+          var chipTxt = done ? 'Đã xong hôm nay' : isDue(r) ? 'Đến giờ' : 'Chưa tới giờ';
+          left.appendChild(el('span', 'inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-medium ' + chipCls, chipTxt));
+          var right = el('div', 'flex items-center gap-1 shrink-0');
+          var calendar = el('button', 'px-2.5 py-1 text-xs font-semibold rounded-lg border border-brand-600 text-brand-700 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-slate-700');
+          calendar.type = 'button';
+          calendar.textContent = 'Thêm vào lịch';
+          calendar.setAttribute('aria-label', 'Thêm nhắc nhở ' + r.kind + ' lúc ' + r.time + ' vào lịch');
+          calendar.addEventListener('click', function () { downloadCalendar([r]); });
+          right.appendChild(calendar);
+          if (!done) {
+            var ok = el('button', 'px-2.5 py-1 text-xs font-semibold rounded-lg bg-brand-600 hover:bg-brand-700 text-white', 'Đã xong');
+            ok.type = 'button';
+            ok.addEventListener('click', function () { r.lastDone = todayStr(); save(REM_KEY, reminders); refresh(); });
+            right.appendChild(ok);
+          }
+          var del = el('button', 'p-1.5 text-slate-400 hover:text-rose-600 transition rounded-lg');
+          del.type = 'button';
+          del.title = 'Xóa nhắc nhở';
+          del.setAttribute('aria-label', 'Xóa nhắc nhở');
+          del.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+          del.addEventListener('click', function () {
+            reminders = reminders.filter(function (x) { return x.id !== r.id; });
+            save(REM_KEY, reminders); refresh();
+          });
+          right.appendChild(del);
+          li.appendChild(left); li.appendChild(right);
+          ul.appendChild(li);
+        });
+      }
+
+      // ---------- HbA1c ----------
+      function sortedA1c() {
+        return a1cs.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; }); // mới nhất trước
+      }
+
+      function a1cDueInfo() {
+        var list = sortedA1c();
+        if (!list.length) return null;
+        var next = nextTest(list[0].date);
+        var today = parseDate(todayStr());
+        var days = Math.round((next - today) / 86400000);
+        return { next: next, days: days };
+      }
+
+      function renderA1c() {
+        var box = document.getElementById('a1cSummary');
+        var ul = document.getElementById('a1cList');
+        box.innerHTML = ''; ul.innerHTML = '';
+        var list = sortedA1c();
+        if (!list.length) {
+          box.appendChild(el('p', 'text-slate-500 dark:text-slate-400', 'Chưa có kết quả HbA1c. Hãy nhập kết quả xét nghiệm gần nhất để theo dõi.'));
+          return;
+        }
+        var last = list[0];
+        box.appendChild(el('p', 'font-bold text-slate-800 dark:text-slate-100', 'Gần nhất: ' + last.value.toFixed(1) + '% (' + fmtDate(parseDate(last.date)) + ')'));
+        box.appendChild(el('p', 'text-slate-600 dark:text-slate-300', 'Đường huyết trung bình ước tính: khoảng ' + Math.round(eAG(last.value)) + ' mg/dL'));
+        var goal = last.value < 7
+          ? 'Nằm trong mức mục tiêu thường dùng cho người lớn (dưới 7%).'
+          : 'Cao hơn mức mục tiêu thường dùng (dưới 7%) – nên trao đổi với bác sĩ.';
+        box.appendChild(el('p', last.value < 7 ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400', goal));
+        if (list.length > 1) {
+          var diff = last.value - list[1].value;
+          var t = Math.abs(diff) < 0.05 ? 'Không đổi so với lần trước.'
+                : (diff < 0 ? 'Giảm ' : 'Tăng ') + Math.abs(diff).toFixed(1) + ' điểm % so với lần trước.';
+          box.appendChild(el('p', 'text-slate-600 dark:text-slate-300', t));
+        }
+        var info = a1cDueInfo();
+        var dueTxt = 'Lần xét nghiệm tiếp theo (sau ' + INTERVAL_MONTHS + ' tháng): ' + fmtDate(info.next);
+        if (info.days < 0) dueTxt += ' – ĐÃ QUÁ HẠN ' + Math.abs(info.days) + ' ngày';
+        else if (info.days <= SOON_DAYS) dueTxt += ' – còn ' + info.days + ' ngày';
+        box.appendChild(el('p', 'font-semibold ' + (info.days <= SOON_DAYS ? 'text-amber-700 dark:text-amber-400' : 'text-slate-700 dark:text-slate-200'), dueTxt));
+
+        list.forEach(function (r) {
+          var li = el('li', 'flex items-center justify-between gap-3 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm');
+          li.appendChild(el('span', '', fmtDate(parseDate(r.date)) + ' – ' + r.value.toFixed(1) + '% (≈ ' + Math.round(eAG(r.value)) + ' mg/dL)'));
+          var del = el('button', 'p-1.5 text-slate-400 hover:text-rose-600 transition rounded-lg');
+          del.type = 'button';
+          del.title = 'Xóa kết quả này';
+          del.setAttribute('aria-label', 'Xóa kết quả HbA1c');
+          del.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+          del.addEventListener('click', function () {
+            a1cs = a1cs.filter(function (x) { return x.id !== r.id; });
+            save(A1C_KEY, a1cs); refresh();
+          });
+          li.appendChild(del);
+          ul.appendChild(li);
+        });
+      }
+
+      // ---------- Banner việc cần làm ----------
+      function renderBanner() {
+        var banner = document.getElementById('dueBanner');
+        var ul = document.getElementById('dueList');
+        ul.innerHTML = '';
+        var items = [];
+        reminders.forEach(function (r) {
+          if (isDue(r)) items.push('Đến giờ ' + r.kind.toLowerCase() + ' (' + r.time + ')' + (r.note ? ' – ' + r.note : ''));
+        });
+        var info = a1cDueInfo();
+        if (info) {
+          if (info.days < 0) items.push('Đã quá hạn xét nghiệm HbA1c (hạn: ' + fmtDate(info.next) + '). Hãy đặt lịch xét nghiệm.');
+          else if (info.days <= SOON_DAYS) items.push('Sắp đến hạn xét nghiệm HbA1c (' + fmtDate(info.next) + ', còn ' + info.days + ' ngày).');
+        }
+        items.forEach(function (t) { ul.appendChild(el('li', '', t)); });
+        banner.classList.toggle('hidden', items.length === 0);
+      }
+
+      function escapeCalendarText(value) {
+        return String(value || '')
+          .replace(/\\/g, '\\\\')
+          .replace(/\r\n|\n|\r/g, '\\n')
+          .replace(/,/g, '\\,')
+          .replace(/;/g, '\\;');
+      }
+
+      function foldCalendarLine(line) {
+        var chunks = [], current = '', bytes = 0;
+        Array.from(line).forEach(function (character) {
+          var size = new TextEncoder().encode(character).length;
+          if (bytes + size > 73) {
+            chunks.push(current);
+            current = ' ';
+            bytes = 1;
+          }
+          current += character;
+          bytes += size;
+        });
+        chunks.push(current);
+        return chunks.join('\r\n');
+      }
+
+      function calendarDateTime(date) {
+        function pad(n) { return String(n).padStart(2, '0'); }
+        return date.getFullYear() + pad(date.getMonth() + 1) + pad(date.getDate()) +
+          'T' + pad(date.getHours()) + pad(date.getMinutes()) + '00';
+      }
+
+      function downloadCalendar(selectedReminders) {
+        if (!selectedReminders.length) {
+          document.getElementById('calendarStatus').textContent = 'Hãy tạo ít nhất một nhắc nhở trước khi tải lịch.';
+          return;
+        }
+
+        var now = new Date();
+        var lines = [
+          'BEGIN:VCALENDAR',
+          'VERSION:2.0',
+          'CALSCALE:GREGORIAN',
+          'PRODID:-//Nhat Ky Duong Huyet//Calendar Reminders//VI'
+        ];
+        selectedReminders.forEach(function (reminder) {
+          var start = new Date();
+          var parts = String(reminder.time || '08:00').split(':');
+          start.setHours(Number(parts[0]), Number(parts[1]), 0, 0);
+          if (start <= now) start.setDate(start.getDate() + 1);
+          var end = new Date(start.getTime() + 15 * 60 * 1000);
+          var description = reminder.kind + (reminder.note ? ' - ' + reminder.note : '');
+          lines.push(
+            'BEGIN:VEVENT',
+            'UID:glucose-reminder-' + escapeCalendarText(reminder.id) + '@nhatkyduonghuyet.local',
+            'DTSTAMP:' + now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''),
+            'DTSTART:' + calendarDateTime(start),
+            'DTEND:' + calendarDateTime(end),
+            'RRULE:FREQ=DAILY',
+            'SUMMARY:' + escapeCalendarText('Nhắc nhở: ' + reminder.kind),
+            'DESCRIPTION:' + escapeCalendarText(description),
+            'BEGIN:VALARM',
+            'ACTION:DISPLAY',
+            'TRIGGER:PT0M',
+            'DESCRIPTION:' + escapeCalendarText(description),
+            'END:VALARM',
+            'END:VEVENT'
+          );
+        });
+        lines.push('END:VCALENDAR');
+
+        var content = lines.map(foldCalendarLine).join('\r\n') + '\r\n';
+        var blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement('a');
+        link.href = url;
+        link.download = 'nhac-nho-duong-huyet.ics';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        document.getElementById('calendarStatus').textContent =
+          'Đã tải tệp lịch. Mở hoặc nhập tệp .ics vào ứng dụng lịch và bật thông báo ở đó.';
+      }
+
+      // ---------- Thông báo trình duyệt (khi trang đang mở) ----------
+      function maybeNotify() {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        reminders.forEach(function (r) {
+          var key = r.id + '|' + todayStr();
+          if (isDue(r) && !notified[key]) {
+            notified[key] = true;
+            try { new Notification('Nhắc nhở: ' + r.kind, { body: 'Đến giờ ' + r.time + (r.note ? ' – ' + r.note : '') }); } catch (e) {}
+          }
+        });
+      }
+
+      function refresh() { renderReminders(); renderA1c(); renderBanner(); maybeNotify(); }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        var now = new Date();
+        document.getElementById('a1cDate').value = todayStr();
+        document.getElementById('reminderTime').value = nowHM();
+        document.getElementById('exportCalendarBtn').addEventListener('click', function () {
+          downloadCalendar(reminders);
+        });
+
+        document.getElementById('reminderForm').addEventListener('submit', function (e) {
+          e.preventDefault();
+          var time = document.getElementById('reminderTime').value;
+          if (!time) return;
+          reminders.push({
+            id: String(Date.now()),
+            kind: document.getElementById('reminderKind').value,
+            time: time,
+            note: document.getElementById('reminderNote').value.trim(),
+            lastDone: ''
+          });
+          save(REM_KEY, reminders);
+          document.getElementById('reminderNote').value = '';
+          refresh();
+        });
+
+        document.getElementById('a1cForm').addEventListener('submit', function (e) {
+          e.preventDefault();
+          var v = parseFloat(document.getElementById('a1cValue').value);
+          var d = document.getElementById('a1cDate').value;
+          if (!(v >= 3 && v <= 20) || !d) return;
+          a1cs.push({ id: String(Date.now()), value: v, date: d });
+          save(A1C_KEY, a1cs);
+          document.getElementById('a1cValue').value = '';
+          refresh();
+        });
+
+        var nb = document.getElementById('notifyBtn');
+        if ('Notification' in window && Notification.permission === 'default') {
+          nb.classList.remove('hidden'); nb.classList.add('inline-flex');
+          nb.addEventListener('click', function () {
+            Notification.requestPermission().then(function () {
+              nb.classList.add('hidden'); nb.classList.remove('inline-flex'); maybeNotify();
+            });
+          });
+        }
+
+        refresh();
+        setInterval(refresh, 30000);
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });
+      });
+    })();
+  </script>
+</body>
+</html>
